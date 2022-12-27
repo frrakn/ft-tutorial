@@ -1,4 +1,4 @@
-use near_sdk::{Gas, ext_contract, PromiseOrValue, assert_one_yocto, PromiseResult};
+use near_sdk::{assert_one_yocto, ext_contract, Gas, PromiseOrValue, PromiseResult};
 
 use crate::*;
 
@@ -81,17 +81,11 @@ impl FungibleTokenCore for Contract {
     }
 
     fn ft_total_supply(&self) -> U128 {
-        /*
-            FILL THIS IN
-        */
-        todo!(); //remove once code is filled in.
+        self.total_supply.into()
     }
 
     fn ft_balance_of(&self, account_id: AccountId) -> U128 {
-        /*
-            FILL THIS IN
-        */
-        todo!(); //remove once code is filled in.
+        self.accounts.get(&account_id).unwrap_or(0).into()
     }
 }
 

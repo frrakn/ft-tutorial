@@ -3,7 +3,9 @@ use near_sdk::collections::{LazyOption, LookupMap};
 use near_sdk::json_types::U128;
 use near_sdk::{env, near_bindgen, AccountId, Balance, PanicOnDefault, StorageUsage};
 
+pub mod events;
 pub mod ft_core;
+pub mod internal;
 pub mod metadata;
 pub mod storage;
 
@@ -18,7 +20,10 @@ pub const FT_METADATA_SPEC: &str = "ft-1.0.0";
 #[near_bindgen]
 #[derive(BorshDeserialize, BorshSerialize, PanicOnDefault)]
 pub struct Contract {
+    pub accounts: LookupMap<AccountId, Balance>,
+    pub total_supply: Balance,
     pub metadata: LazyOption<FungibleTokenMetadata>,
+    pub bytes_for_longest_account_id: StorageUsage,
 }
 
 /// Helper structure for keys of the persistent collections.
@@ -40,6 +45,7 @@ impl Contract {
             FungibleTokenMetadata {
                 spec: String::from(FT_METADATA_SPEC),
                 name: String::from("DefaultFT"),
+                symbol: String::from("🍆"),
                 icon: Some(String::from(DATA_IMAGE_ICON)),
                 reference: None,
                 reference_hash: None,
@@ -52,8 +58,25 @@ impl Contract {
     /// the given fungible token metadata.
     #[init]
     pub fn new(owner_id: AccountId, total_supply: U128, metadata: FungibleTokenMetadata) -> Self {
-        Self {
+        let mut this = Self {
+            accounts: LookupMap::new(StorageKey::Accounts.try_to_vec().unwrap()),
+            total_supply: total_supply.0,
             metadata: LazyOption::new(StorageKey::Metadata.try_to_vec().unwrap(), Some(&metadata)),
+            bytes_for_longest_account_id: 0,
+        };
+
+        this.measure_bytes_for_longest_account_id();
+
+        this.internal_register_account(&owner_id);
+        this.internal_deposit(&owner_id, total_supply.into());
+
+        events::FtMint {
+            owner_id: &owner_id,
+            amount: &total_supply,
+            memo: Some("yolo"),
         }
+        .emit();
+
+        this
     }
 }

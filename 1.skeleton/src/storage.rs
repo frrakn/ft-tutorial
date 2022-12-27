@@ -1,7 +1,7 @@
-use near_sdk::json_types::U128;
-use near_sdk::{env, log, AccountId, Balance, Promise};
 use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
+use near_sdk::json_types::U128;
 use near_sdk::serde::{Deserialize, Serialize};
+use near_sdk::{env, log, AccountId, Balance, Promise};
 
 use crate::*;
 
@@ -84,23 +84,47 @@ impl StorageManagement for Contract {
         account_id: Option<AccountId>,
         registration_only: Option<bool>,
     ) -> StorageBalance {
-        /*
-            FILL THIS IN
-        */
-        todo!(); //remove once code is filled in.
+        let attached_deposit = env::attached_deposit();
+        let account_id = account_id.unwrap_or(env::predecessor_account_id());
+
+        if self.accounts.contains_key(&account_id) {
+            if attached_deposit > 0 {
+                Promise::new(env::predecessor_account_id()).transfer(attached_deposit);
+            }
+        } else {
+            let storage_cost = self.storage_balance_bounds().min.0;
+            if attached_deposit < storage_cost {
+                env::panic_str("Did not attach enough to pay for minimum storage balance");
+            }
+
+            self.internal_register_account(&account_id);
+            let refund = attached_deposit - storage_cost;
+            if refund > 0 {
+                Promise::new(env::predecessor_account_id()).transfer(refund);
+            }
+        }
+
+        self.storage_balance_of(account_id).unwrap()
     }
 
     fn storage_balance_bounds(&self) -> StorageBalanceBounds {
-        /*
-            FILL THIS IN
-        */
-        todo!(); //remove once code is filled in.
+        let storage_cost =
+            Balance::from(self.bytes_for_longest_account_id) * env::storage_byte_cost();
+
+        StorageBalanceBounds {
+            min: storage_cost.into(),
+            max: Some(storage_cost.into()),
+        }
     }
 
     fn storage_balance_of(&self, account_id: AccountId) -> Option<StorageBalance> {
-        /*
-            FILL THIS IN
-        */
-        todo!(); //remove once code is filled in.
+        if self.accounts.contains_key(&account_id) {
+            Some(StorageBalance {
+                total: self.storage_balance_bounds().min,
+                available: 0.into(),
+            })
+        } else {
+            None
+        }
     }
 }

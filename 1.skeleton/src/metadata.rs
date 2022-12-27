@@ -10,6 +10,7 @@ use crate::*;
 pub struct FungibleTokenMetadata {
     pub spec: String,
     pub name: String,
+    pub symbol: String,
     pub icon: Option<String>,
     pub reference: Option<String>,
     pub reference_hash: Option<Base64VecU8>,
